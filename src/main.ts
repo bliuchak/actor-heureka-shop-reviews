@@ -41,7 +41,7 @@ const crawler = new CheerioCrawler({
             globs: [`${shopUrl}?f=*#filtr`],
         });
 
-        let results: Output[] = [];
+        let pageReviews: Output[] = [];
 
         const reviewsContainer = $('ul.c-box-list.o-wrapper__overflowing\\@lteLine.js-pagination__content');
         reviewsContainer.find('li.c-box-list__item.c-post').each((_, element) => {
@@ -72,12 +72,23 @@ const crawler = new CheerioCrawler({
 
             const shopReply = (title || body) ? { title, body } : null
 
-            results.push({author, reviewAt, recommendation, rating, pros, cons, summary, shopReply});
+            const pageReview: Output = {
+                author,
+                reviewAt,
+                recommendation,
+                rating,
+                pros,
+                cons,
+                summary,
+                shopReply
+            }
+
+            pageReviews.push(pageReview);
         });
 
-        if (results.length > 0) {
-            await Dataset.pushData(results);
-            log.info(`Successfully saved ${results.length} reviews from page ${currentActivePage}`);
+        if (pageReviews.length > 0) {
+            await Dataset.pushData(pageReviews);
+            log.info(`Successfully saved ${pageReviews.length} reviews from page ${currentActivePage}`);
         } else {
             log.info(`No reviews found on page ${currentActivePage}`);
         }
