@@ -1,28 +1,28 @@
-// Apify SDK - toolkit for building Apify Actors (Read more at https://docs.apify.com/sdk/js/)
 import { Actor } from 'apify';
-// Crawlee - web scraping and browser automation library (Read more at https://crawlee.dev)
-import { CheerioCrawler, Dataset } from 'crawlee';
-
-// this is ESM project, and as such, it requires you to specify extensions in your relative imports
-// read more about this here: https://nodejs.org/docs/latest-v18.x/api/esm.html#mandatory-file-extensions
-// note that we need to use `.js` even when inside TS files
-// import { router } from './routes.js';
+import { CheerioCrawler, Dataset, EnqueueStrategy } from 'crawlee';
 
 interface Input {
-    startUrls: {
-        url: string;
-        method?: 'GET' | 'HEAD' | 'POST' | 'PUT' | 'DELETE' | 'TRACE' | 'OPTIONS' | 'CONNECT' | 'PATCH';
-        headers?: Record<string, string>;
-        userData: Record<string, unknown>;
-    }[];
+    shopUrl: string;
     maxRequestsPerCrawl: number;
 }
 
-// The init() call configures the Actor for its environment. It's recommended to start every Actor with an init()
+interface Output {
+    author: string,
+    reviewAt?: string,
+    recommendation: string,
+    rating?: string,
+    pros?: string[],
+    cons?: string[],
+    summary?: string
+    shopReply?: {
+        title: string,
+        body: string
+    } | null
+}
+
 await Actor.init();
 
-// Structure of input is defined in input_schema.json
-const { startUrls = ['https://apify.com'], maxRequestsPerCrawl = 100 } =
+const { shopUrl = 'https://obchody.heureka.cz/kaufland-cz/recenze/', maxRequestsPerCrawl = 1 } =
     (await Actor.getInput<Input>()) ?? ({} as Input);
 
 const proxyConfiguration = await Actor.createProxyConfiguration();
@@ -30,20 +30,55 @@ const proxyConfiguration = await Actor.createProxyConfiguration();
 const crawler = new CheerioCrawler({
     proxyConfiguration,
     maxRequestsPerCrawl,
+    sameDomainDelaySecs: 2,
     requestHandler: async ({ enqueueLinks, request, $, log }) => {
-        log.info('enqueueing new URLs');
-        await enqueueLinks();
+        const currentActivePage = $('li > span.c-pagination__link.is-active').text().trim()
+        log.info(`URL: ${request.url}, page: ${currentActivePage}`);
 
-        // Extract title from the page.
-        const title = $('title').text();
-        log.info(`${title}`, { url: request.loadedUrl });
+        await enqueueLinks({
+            strategy: EnqueueStrategy.SameDomain,
+            selector: 'a.c-pagination__link',
+            globs: [`${shopUrl}?f=*#filtr`],
+        });
 
-        // Save url and title to Dataset - a table-like storage.
-        await Dataset.pushData({ url: request.loadedUrl, title });
+        let results: Output[] = [];
+
+        const reviewsContainer = $('ul.c-box-list.o-wrapper__overflowing\\@lteLine.js-pagination__content');
+        reviewsContainer.find('li.c-box-list__item.c-post').each((_, element) => {
+            const reviewElement = $(element);
+
+            const author = reviewElement.find('.c-post__author').find('svg').remove().end().text().replace(/\u00a0/g, ' ').trim();
+            const reviewAt = reviewElement.find('.c-post__time-shop > time.c-post__publish-time').attr('datetime');
+            const recommendation = reviewElement.find('.c-post__recommendation').text().trim();
+            const rating = reviewElement.find('.c-rating-widget').attr('data-rating');
+            const summary = reviewElement.find('p.c-post__summary').text().trim();
+
+            let pros: string[] = []
+
+            const prosContainer = reviewElement.find('ul.c-attributes-list.c-attributes-list--pros.c-attributes-list--circle.o-block-list.o-block-list--snug');
+            prosContainer.find('li.c-attributes-list__item').each((_, element) => {
+                pros.push($(element).text().trim());
+            });
+
+            let cons: string[] = []
+
+            const consContainer = reviewElement.find('ul.c-attributes-list.c-attributes-list--cons.c-attributes-list--circle.o-block-list.o-block-list--snug');
+            consContainer.find('li.c-attributes-list__item').each((_, element) => {
+                cons.push($(element).text().trim());
+            });
+
+            const title = reviewElement.find('.c-post-response > h3.c-post-response__heading.e-heading > span').text().trim();
+            const body = reviewElement.find('.c-post-response > p').text().trim();
+
+            const shopReply = (title || body) ? { title, body } : null
+
+            results.push({author, reviewAt, recommendation, rating, pros, cons, summary, shopReply});
+        });
+
+        await Dataset.pushData(results);
     },
 });
 
-await crawler.run(startUrls);
+await crawler.run([shopUrl]);
 
-// Gracefully exit the Actor process. It's recommended to quit all Actors with an exit()
 await Actor.exit();

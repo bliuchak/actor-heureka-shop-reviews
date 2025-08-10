@@ -3,22 +3,18 @@
     "type": "object",
     "schemaVersion": 1,
     "properties": {
-        "startUrls": {
-            "title": "Start URLs",
-            "type": "array",
-            "description": "URLs to start with.",
-            "editor": "requestListSources",
-            "prefill": [
-                {
-                    "url": "https://apify.com"
-                }
-            ]
+        "shopUrl": {
+            "title": "Shop URL",
+            "type": "string",
+            "description": "Shop URL with reviews.",
+            "editor": "textfield",
+            "prefill": "https://obchody.heureka.cz/allegro-cz/recenze/overene"
         },
         "maxRequestsPerCrawl": {
             "title": "Max Requests per Crawl",
             "type": "integer",
             "description": "Maximum number of requests that can be made by this crawler.",
-            "default": 100
+            "default": 10
         }
     }
 }
