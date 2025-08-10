@@ -75,7 +75,12 @@ const crawler = new CheerioCrawler({
             results.push({author, reviewAt, recommendation, rating, pros, cons, summary, shopReply});
         });
 
-        await Dataset.pushData(results);
+        if (results.length > 0) {
+            await Dataset.pushData(results);
+            log.info(`Successfully saved ${results.length} reviews from page ${currentActivePage}`);
+        } else {
+            log.info(`No reviews found on page ${currentActivePage}`);
+        }
     },
 });
 
