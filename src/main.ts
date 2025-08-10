@@ -41,7 +41,7 @@ const crawler = new CheerioCrawler({
             globs: [`${shopUrl}?f=*#filtr`],
         });
 
-        let pageReviews: Output[] = [];
+        const pageReviews: Output[] = [];
 
         const reviewsContainer = $('ul.c-box-list.o-wrapper__overflowing\\@lteLine.js-pagination__content');
         reviewsContainer.find('li.c-box-list__item.c-post').each((_, element) => {
@@ -55,33 +55,37 @@ const crawler = new CheerioCrawler({
                 .text()
                 .replace(/\u00a0/g, ' ')
                 .trim();
+
             const reviewAt = reviewElement.find('.c-post__time-shop > time.c-post__publish-time').attr('datetime');
             const recommendation = reviewElement.find('.c-post__recommendation').text().trim();
             const rating = reviewElement.find('.c-rating-widget').attr('data-rating');
             const summary = reviewElement.find('p.c-post__summary').text().trim();
 
-            let pros: string[] = [];
+            const pros: string[] = [];
 
             const prosContainer = reviewElement.find(
                 'ul.c-attributes-list.c-attributes-list--pros.c-attributes-list--circle.o-block-list.o-block-list--snug',
             );
-            prosContainer.find('li.c-attributes-list__item').each((_, element) => {
-                pros.push($(element).text().trim());
+
+            prosContainer.find('li.c-attributes-list__item').each((_idx, el) => {
+                pros.push($(el).text().trim());
             });
 
-            let cons: string[] = [];
+            const cons: string[] = [];
 
             const consContainer = reviewElement.find(
                 'ul.c-attributes-list.c-attributes-list--cons.c-attributes-list--circle.o-block-list.o-block-list--snug',
             );
-            consContainer.find('li.c-attributes-list__item').each((_, element) => {
-                cons.push($(element).text().trim());
+
+            consContainer.find('li.c-attributes-list__item').each((_idx, el) => {
+                cons.push($(el).text().trim());
             });
 
             const title = reviewElement
                 .find('.c-post-response > h3.c-post-response__heading.e-heading > span')
                 .text()
                 .trim();
+
             const body = reviewElement.find('.c-post-response > p').text().trim();
 
             const shopReply = title || body ? { title, body } : null;
