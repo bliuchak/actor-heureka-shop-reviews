@@ -30,7 +30,6 @@ This code is a TypeScript script that uses [Crawlee CheerioCrawler](https://craw
 
 [web scraper template](https://www.youtube.com/watch?v=u-i-Korzf8w)
 
-
 ## Getting started
 
 For complete information [see this article](https://docs.apify.com/platform/actors/development#build-actor-locally). To run the Actor use the following command:
