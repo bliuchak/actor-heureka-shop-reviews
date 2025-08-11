@@ -6,7 +6,7 @@ interface Input {
     maxRequestsPerCrawl: number;
 }
 
-interface Output {
+interface Review {
     author: string;
     reviewAt?: string;
     recommendation: string;
@@ -41,7 +41,7 @@ const crawler = new CheerioCrawler({
             globs: [`${shopUrl}?f=*#filtr`],
         });
 
-        const pageReviews: Output[] = [];
+        const pageReviews: Review[] = [];
 
         const reviewsContainer = $('ul.c-box-list.o-wrapper__overflowing\\@lteLine.js-pagination__content');
         reviewsContainer.find('li.c-box-list__item.c-post').each((_, element) => {
@@ -90,7 +90,7 @@ const crawler = new CheerioCrawler({
 
             const shopReply = title || body ? { title, body } : null;
 
-            const pageReview: Output = {
+            const pageReview: Review = {
                 author,
                 reviewAt,
                 recommendation,
