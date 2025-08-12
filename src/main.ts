@@ -29,7 +29,7 @@ const proxyConfiguration = await Actor.createProxyConfiguration();
 const crawler = new CheerioCrawler({
     proxyConfiguration,
     maxRequestsPerCrawl,
-    sameDomainDelaySecs: 2,
+    sameDomainDelaySecs: 2, // to prevent creating unnecessary load on target web
     requestHandler: async ({ enqueueLinks, request, $, log }) => {
         const currentActivePage = $('li > span.c-pagination__link.is-active').text().trim();
         log.info(`URL: ${request.url}, page: ${currentActivePage}`);
