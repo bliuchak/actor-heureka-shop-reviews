@@ -1,5 +1,5 @@
 {
-    "title": "CheerioCrawler Template",
+    "title": "heureka-shop-reviews actor input",
     "type": "object",
     "schemaVersion": 1,
     "properties": {
@@ -8,6 +8,7 @@
             "type": "array",
             "description": "Shop URLs with reviews.",
             "editor": "stringList",
+            "patternValue": "^(https?:\\/\\/(obchody\\.heureka\\.(cz|sk)|127\\.0\\.0\\.1:3000)\\/[a-z0-9-]+\\/recenze\\/overene)(\\?f=[2-9]\\d*)?(\\#filtr)?$",
             "prefill": ["https://obchody.heureka.cz/allegro-cz/recenze/overene"]
         },
         "maxRequestsPerCrawl": {
