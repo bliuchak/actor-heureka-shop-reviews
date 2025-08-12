@@ -14,10 +14,7 @@ interface Review {
     pros?: string[];
     cons?: string[];
     summary?: string;
-    shopReply?: {
-        title: string;
-        body: string;
-    } | null;
+    shopReply?: string;
 }
 
 await Actor.init();
@@ -80,14 +77,7 @@ const crawler = new CheerioCrawler({
                 cons.push($(el).text().trim());
             });
 
-            const title = reviewElement
-                .find('.c-post-response > h3.c-post-response__heading.e-heading > span')
-                .text()
-                .trim();
-
-            const body = reviewElement.find('.c-post-response > p').text().trim();
-
-            const shopReply = title || body ? { title, body } : null;
+            const shopReply = reviewElement.find('.c-post-response > p').text().trim();
 
             const pageReview: Review = {
                 author,

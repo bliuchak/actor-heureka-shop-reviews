@@ -57,4 +57,4 @@ Principles:
 | pros | `string[]` | ["Delivery", "Prices"] | Positive sides |
 | cons | `string[]` | ["There are no dog food"] | Negative sides |
 | summary | `string` | Rychlý, bezproblémový nákup | Review summary |
-| shopReply | `{title: string, body: string} \| null` | Dobrý den, děkuji Vám za Vaši recenzi | Shop reaction on review |
+| shopReply | `string` | Dobrý den, děkuji Vám za Vaši recenzi | Shop reaction on review |
