@@ -22,8 +22,7 @@ interface Review {
 
 await Actor.init();
 
-const { shopUrl = 'https://obchody.heureka.cz/kaufland-cz/recenze/', maxRequestsPerCrawl = 1 } =
-    (await Actor.getInput<Input>()) ?? ({} as Input);
+const { shopUrl, maxRequestsPerCrawl } = (await Actor.getInput<Input>()) ?? ({} as Input);
 
 const proxyConfiguration = await Actor.createProxyConfiguration();
 
