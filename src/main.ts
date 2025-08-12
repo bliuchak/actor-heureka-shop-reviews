@@ -2,11 +2,12 @@ import { Actor } from 'apify';
 import { CheerioCrawler, Dataset, EnqueueStrategy } from 'crawlee';
 
 interface Input {
-    shopUrl: string;
+    shopUrls: string[];
     maxRequestsPerCrawl: number;
 }
 
 interface Review {
+    shopName: string;
     author: string;
     reviewAt?: string;
     recommendation: string;
@@ -19,7 +20,7 @@ interface Review {
 
 await Actor.init();
 
-const { shopUrl, maxRequestsPerCrawl } = (await Actor.getInput<Input>()) ?? ({} as Input);
+const { shopUrls, maxRequestsPerCrawl } = (await Actor.getInput<Input>()) ?? ({} as Input);
 
 const proxyConfiguration = await Actor.createProxyConfiguration();
 
@@ -34,7 +35,7 @@ const crawler = new CheerioCrawler({
         await enqueueLinks({
             strategy: EnqueueStrategy.SameDomain,
             selector: 'a.c-pagination__link',
-            globs: [`${shopUrl}?f=*#filtr`],
+            globs: [`${request.url}?f=*#filtr`],
         });
 
         const pageReviews: Review[] = [];
@@ -79,7 +80,10 @@ const crawler = new CheerioCrawler({
 
             const shopReply = reviewElement.find('.c-post-response > p').text().trim();
 
+            const shopName = $('h1.c-shop-detail-header__logo.e-heading > a > img').attr('alt') || 'Unknown shop';
+
             const pageReview: Review = {
+                shopName,
                 author,
                 reviewAt,
                 recommendation,
@@ -102,6 +106,6 @@ const crawler = new CheerioCrawler({
     },
 });
 
-await crawler.run([shopUrl]);
+await crawler.run(shopUrls);
 
 await Actor.exit();

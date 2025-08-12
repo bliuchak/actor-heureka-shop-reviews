@@ -3,12 +3,12 @@
     "type": "object",
     "schemaVersion": 1,
     "properties": {
-        "shopUrl": {
-            "title": "Shop URL",
-            "type": "string",
-            "description": "Shop URL with reviews.",
-            "editor": "textfield",
-            "prefill": "https://obchody.heureka.cz/allegro-cz/recenze/overene"
+        "shopUrls": {
+            "title": "Shop URLs",
+            "type": "array",
+            "description": "Shop URLs with reviews.",
+            "editor": "stringList",
+            "prefill": ["https://obchody.heureka.cz/allegro-cz/recenze/overene"]
         },
         "maxRequestsPerCrawl": {
             "title": "Max Requests per Crawl",
