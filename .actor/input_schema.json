@@ -11,11 +11,11 @@
             "patternValue": "^(https?:\\/\\/(obchody\\.heureka\\.(cz|sk)|127\\.0\\.0\\.1:3000)\\/[a-z0-9-]+\\/recenze\\/overene)(\\?f=[2-9]\\d*)?(\\#filtr)?$",
             "prefill": ["https://obchody.heureka.cz/allegro-cz/recenze/overene"]
         },
-        "maxRequestsPerCrawl": {
-            "title": "Max Requests per Crawl",
+        "maxShopReviewsPerCrawl": {
+            "title": "Max shop reviews per Crawl",
             "type": "integer",
-            "description": "Maximum number of requests that can be made by this crawler.",
-            "default": 10
+            "description": "Maximum number of reviews that can be collected per shop by this crawler.",
+            "default": 20
         }
     }
 }

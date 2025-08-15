@@ -1,9 +1,9 @@
 import { Actor } from 'apify';
-import { CheerioCrawler, Dataset, EnqueueStrategy } from 'crawlee';
+import { CheerioCrawler, Dataset, EnqueueStrategy, useState } from 'crawlee';
 
 interface Input {
     shopUrls: string[];
-    maxRequestsPerCrawl: number;
+    maxShopReviewsPerCrawl: number;
 }
 
 interface Review {
@@ -20,25 +20,25 @@ interface Review {
 
 await Actor.init();
 
-const { shopUrls, maxRequestsPerCrawl } = (await Actor.getInput<Input>()) ?? ({} as Input);
+const { shopUrls, maxShopReviewsPerCrawl } = (await Actor.getInput<Input>()) ?? ({} as Input);
 
 const proxyConfiguration = await Actor.createProxyConfiguration();
 
+type MetadataMap = Record<string, number>;
+
 const crawler = new CheerioCrawler({
     proxyConfiguration,
-    maxRequestsPerCrawl,
     sameDomainDelaySecs: 2, // to prevent creating unnecessary load on target web
     requestHandler: async ({ enqueueLinks, request, $, log }) => {
-        const currentActivePage = $('li > span.c-pagination__link.is-active').text().trim();
-        log.info(`URL: ${request.url}, page: ${currentActivePage}`);
+        const shopName = $('h1.c-shop-detail-header__logo.e-heading > a > img').attr('alt') || 'Unknown shop';
 
-        await enqueueLinks({
-            strategy: EnqueueStrategy.SameDomain,
-            selector: 'a.c-pagination__link',
-            globs: [`${request.url}?f=*#filtr`],
-        });
+        const state = await useState<MetadataMap>();
 
-        const pageReviews: Review[] = [];
+        if (!(shopName in state)) {
+            state[shopName] = 0;
+        }
+
+        let pageReviews: Review[] = [];
 
         const reviewsContainer = $('ul.c-box-list.o-wrapper__overflowing\\@lteLine.js-pagination__content');
         reviewsContainer.find('li.c-box-list__item.c-post').each((_, element) => {
@@ -80,8 +80,6 @@ const crawler = new CheerioCrawler({
 
             const shopReply = reviewElement.find('.c-post-response > p').text().trim();
 
-            const shopName = $('h1.c-shop-detail-header__logo.e-heading > a > img').attr('alt') || 'Unknown shop';
-
             const pageReview: Review = {
                 shopName,
                 author,
@@ -97,11 +95,28 @@ const crawler = new CheerioCrawler({
             pageReviews.push(pageReview);
         });
 
+        const reviewsNeeded = maxShopReviewsPerCrawl - state[shopName];
+        pageReviews = pageReviews.slice(0, Math.min(pageReviews.length, reviewsNeeded));
+
         if (pageReviews.length > 0) {
             await Dataset.pushData(pageReviews);
-            log.info(`Successfully saved ${pageReviews.length} reviews from page ${currentActivePage}`);
+
+            state[shopName] += pageReviews.length;
+
+            log.info(
+                `Successfully saved ${state[shopName]}/${maxShopReviewsPerCrawl} reviews from page ${request.url}`,
+            );
         } else {
-            log.info(`No reviews found on page ${currentActivePage}`);
+            log.info(`No reviews found on page ${request.url}`);
+        }
+
+        // stop processing new pages when reviews limit is reached
+        if (state[shopName] < maxShopReviewsPerCrawl) {
+            await enqueueLinks({
+                strategy: EnqueueStrategy.SameDomain,
+                selector: 'a.c-pagination__controls[rel="next"]',
+                globs: [`${request.url}?f=*#filtr`],
+            });
         }
     },
 });
