@@ -27,7 +27,7 @@ Principles:
 
     ```bash
     mkdir -p storage/key_value_stores/default
-    echo '{"shopUrls": ["http://127.0.0.1:3000/alza-cz/recenze/overene","http://127.0.0.1:3000/notino-cz/recenze/overene"],"maxShopReviewsPerCrawl": 20}' > storage/key_value_stores/default/INPUT.json
+    echo '{"shopUrls": ["http://127.0.0.1:3000/alza-cz/recenze/overene","http://127.0.0.1:3000/notino-cz/recenze/overene"],"maxShopReviews": 20}' > storage/key_value_stores/default/INPUT.json
     ```
 
 4. Run locally
@@ -42,10 +42,10 @@ Principles:
 
 ### Input
 
-| Name                   | Type       | Example                     | Description                                         |
-| ---------------------- | ---------- | --------------------------- | --------------------------------------------------- |
-| shopUrls               | `string[]` | `["http://127.0.0.1:3000"]` | Shop details pages at Heureka                       |
-| maxShopReviewsPerCrawl | `int`      | `20`                        | Maximum number of reviews that Actor should collect |
+| Name           | Type       | Example                                             | Description                                         |
+| -------------- | ---------- | --------------------------------------------------- | --------------------------------------------------- |
+| shopUrls       | `string[]` | `["http://127.0.0.1:3000/alza-cz/recenze/overene"]` | Shop details pages at Heureka                       |
+| maxShopReviews | `int`      | `20`                                                | Maximum number of reviews that Actor should collect |
 
 ### Output
 

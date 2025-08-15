@@ -3,7 +3,7 @@ import { CheerioCrawler, Dataset, EnqueueStrategy, useState } from 'crawlee';
 
 interface Input {
     shopUrls: string[];
-    maxShopReviewsPerCrawl: number;
+    maxShopReviews: number;
 }
 
 interface Review {
@@ -20,11 +20,11 @@ interface Review {
 
 await Actor.init();
 
-const { shopUrls, maxShopReviewsPerCrawl } = (await Actor.getInput<Input>()) ?? ({} as Input);
+const { shopUrls, maxShopReviews } = (await Actor.getInput<Input>()) ?? ({} as Input);
 
 const proxyConfiguration = await Actor.createProxyConfiguration();
 
-type MetadataMap = Record<string, number>;
+type scrapedReviewsPerShop = Record<string, number>;
 
 const crawler = new CheerioCrawler({
     proxyConfiguration,
@@ -32,11 +32,9 @@ const crawler = new CheerioCrawler({
     requestHandler: async ({ enqueueLinks, request, $, log }) => {
         const shopName = $('h1.c-shop-detail-header__logo.e-heading > a > img').attr('alt') || 'Unknown shop';
 
-        const state = await useState<MetadataMap>();
-
-        if (!(shopName in state)) {
-            state[shopName] = 0;
-        }
+        const state = await useState<{ scrapedReviewsPerShop: scrapedReviewsPerShop }>('STATE', {
+            scrapedReviewsPerShop: {},
+        });
 
         let pageReviews: Review[] = [];
 
@@ -95,32 +93,37 @@ const crawler = new CheerioCrawler({
             pageReviews.push(pageReview);
         });
 
-        const reviewsNeeded = maxShopReviewsPerCrawl - state[shopName];
-        pageReviews = pageReviews.slice(0, Math.min(pageReviews.length, reviewsNeeded));
+        const reviewsNeeded = maxShopReviews - (state.scrapedReviewsPerShop[shopName] || 0);
+        pageReviews = pageReviews.slice(0, reviewsNeeded);
 
         if (pageReviews.length > 0) {
+            // update state must be before pushData to prevent race condition
+            state.scrapedReviewsPerShop[shopName] = (state.scrapedReviewsPerShop[shopName] || 0) + pageReviews.length;
+
             await Dataset.pushData(pageReviews);
 
-            state[shopName] += pageReviews.length;
-
             log.info(
-                `Successfully saved ${state[shopName]}/${maxShopReviewsPerCrawl} reviews from page ${request.url}`,
+                `Successfully saved ${state.scrapedReviewsPerShop[shopName]}/${maxShopReviews} reviews from page ${request.url}`,
             );
         } else {
             log.info(`No reviews found on page ${request.url}`);
         }
 
         // stop processing new pages when reviews limit is reached
-        if (state[shopName] < maxShopReviewsPerCrawl) {
+        if (state.scrapedReviewsPerShop[shopName] < maxShopReviews) {
             await enqueueLinks({
                 strategy: EnqueueStrategy.SameDomain,
                 selector: 'a.c-pagination__controls[rel="next"]',
-                globs: [`${request.url}?f=*#filtr`],
+                regexps: [/\?f=\d+#filtr/],
             });
         }
     },
 });
 
 await crawler.run(shopUrls);
+
+Actor.on('migrating', async () => {
+    await Actor.reboot();
+});
 
 await Actor.exit();
