@@ -20,6 +20,13 @@ interface Review {
 
 await Actor.init();
 
+// register event listeners FIRST
+// - ideally: immediately after Actor.init()
+// - At minimum: before crawler.run()
+Actor.on('migrating', async () => {
+    await Actor.reboot();
+});
+
 const { shopUrls, maxShopReviews } = (await Actor.getInput<Input>()) ?? ({} as Input);
 
 const proxyConfiguration = await Actor.createProxyConfiguration();
@@ -121,9 +128,5 @@ const crawler = new CheerioCrawler({
 });
 
 await crawler.run(shopUrls);
-
-Actor.on('migrating', async () => {
-    await Actor.reboot();
-});
 
 await Actor.exit();
