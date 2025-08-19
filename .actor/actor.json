@@ -1,6 +1,6 @@
 {
     "actorSpecification": 1,
-    "name": "heureka-shop-reviews",
+    "name": "actor-heureka-shop-reviews",
     "title": "Project Cheerio Crawler Typescript",
     "description": "Crawlee and Cheerio project in typescript.",
     "version": "0.0",

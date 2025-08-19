@@ -1,5 +1,5 @@
 {
-    "name": "heureka-shop-reviews",
+    "name": "actor-heureka-shop-reviews",
     "version": "0.0.1",
     "type": "module",
     "description": "This is a boilerplate of an Apify Actor.",

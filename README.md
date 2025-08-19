@@ -1,4 +1,4 @@
-# heureka-shop-reviews
+# actor-heureka-shop-reviews
 
 This is an Apify actor that scrapes shop reviews from shop details page at Heureka.
 
