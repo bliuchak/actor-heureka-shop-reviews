@@ -12,10 +12,26 @@
             "prefill": ["https://obchody.heureka.cz/allegro-cz/recenze/overene"]
         },
         "maxShopReviews": {
-            "title": "Max shop reviews",
+            "title": "Max Shop Reviews",
             "type": "integer",
             "description": "Maximum number of reviews that can be collected per shop by this crawler.",
             "default": 20
+        },
+        "proxyGroups": {
+            "title": "Proxy Groups",
+            "type": "array",
+            "description": "Proxy groups to use for this actor.",
+            "editor": "stringList",
+            "items": {
+                "type": "string"
+            }
+        },
+        "proxyCountry": {
+            "title": "Proxy Country",
+            "type": "string",
+            "description": "Country of the proxies to use for this actor.",
+            "editor": "textfield"
         }
-    }
+    },
+    "required": ["shopUrls", "maxShopReviews"]
 }

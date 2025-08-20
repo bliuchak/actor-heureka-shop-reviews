@@ -1,9 +1,11 @@
 import { Actor } from 'apify';
-import { CheerioCrawler, Dataset, EnqueueStrategy, useState } from 'crawlee';
+import { EnqueueStrategy, PlaywrightCrawler, useState } from 'crawlee';
 
 interface Input {
     shopUrls: string[];
     maxShopReviews: number;
+    proxyGroups?: string[];
+    proxyCountry?: string;
 }
 
 interface Review {
@@ -27,78 +29,98 @@ Actor.on('migrating', async () => {
     await Actor.reboot();
 });
 
-const { shopUrls, maxShopReviews } = (await Actor.getInput<Input>()) ?? ({} as Input);
+const { shopUrls, maxShopReviews, proxyGroups, proxyCountry } = (await Actor.getInput<Input>()) ?? ({} as Input);
 
-const proxyConfiguration = await Actor.createProxyConfiguration();
+const proxyConfiguration = await Actor.createProxyConfiguration({
+    groups: proxyGroups,
+    countryCode: proxyCountry,
+});
 
 type scrapedReviewsPerShop = Record<string, number>;
 
-const crawler = new CheerioCrawler({
+// maxConcurrency is a debug config for internal usage (default set to 1)
+const maxConcurrency = parseInt(process.env.ACTOR_MAX_CONCURRENCY || '1', 10);
+
+const crawler = new PlaywrightCrawler({
+    maxConcurrency,
     proxyConfiguration,
-    sameDomainDelaySecs: 2, // to prevent creating unnecessary load on target web
-    requestHandler: async ({ enqueueLinks, request, $, log }) => {
-        const shopName = $('h1.c-shop-detail-header__logo.e-heading > a > img').attr('alt') || 'Unknown shop';
+    launchContext: {
+        launchOptions: {
+            headless: true,
+        },
+    },
+    async requestHandler({ request, log, page, enqueueLinks }) {
+        const shopName = await page.$eval(
+            'h1.c-shop-detail-header__logo.e-heading > a > img',
+            (img) => img.getAttribute('alt') || 'Unknown shop',
+        );
 
         const state = await useState<{ scrapedReviewsPerShop: scrapedReviewsPerShop }>('STATE', {
             scrapedReviewsPerShop: {},
         });
 
-        let pageReviews: Review[] = [];
+        let pageReviews: Review[] = await page.$$eval(
+            'ul.c-box-list.o-wrapper__overflowing\\@lteLine.js-pagination__content li.c-box-list__item.c-post',
+            (reviewElements, currentShopName) => {
+                return reviewElements.map((reviewElement) => {
+                    // Get author text, removing SVG content
+                    const authorElement = reviewElement.querySelector('.c-post__author');
+                    const svgElement = authorElement?.querySelector('svg');
+                    if (svgElement) svgElement.remove();
+                    const author = authorElement?.textContent?.replace(/\u00a0/g, ' ').trim() || '';
 
-        const reviewsContainer = $('ul.c-box-list.o-wrapper__overflowing\\@lteLine.js-pagination__content');
-        reviewsContainer.find('li.c-box-list__item.c-post').each((_, element) => {
-            const reviewElement = $(element);
+                    // Get review date
+                    const reviewAt =
+                        reviewElement
+                            .querySelector('.c-post__time-shop > time.c-post__publish-time')
+                            ?.getAttribute('datetime') || undefined;
 
-            const author = reviewElement
-                .find('.c-post__author')
-                .find('svg')
-                .remove()
-                .end()
-                .text()
-                .replace(/\u00a0/g, ' ')
-                .trim();
+                    // Get recommendation text
+                    const recommendation =
+                        reviewElement.querySelector('.c-post__recommendation')?.textContent?.trim() || '';
 
-            const reviewAt = reviewElement.find('.c-post__time-shop > time.c-post__publish-time').attr('datetime');
-            const recommendation = reviewElement.find('.c-post__recommendation').text().trim();
-            const rating = reviewElement.find('.c-rating-widget').attr('data-rating');
-            const summary = reviewElement.find('p.c-post__summary').text().trim();
+                    // Get rating
+                    const rating =
+                        reviewElement.querySelector('.c-rating-widget')?.getAttribute('data-rating') || undefined;
 
-            const pros: string[] = [];
+                    // Get summary
+                    const summary = reviewElement.querySelector('p.c-post__summary')?.textContent?.trim() || undefined;
 
-            const prosContainer = reviewElement.find(
-                'ul.c-attributes-list.c-attributes-list--pros.c-attributes-list--circle.o-block-list.o-block-list--snug',
-            );
+                    // Get pros
+                    const prosElements = reviewElement.querySelectorAll(
+                        'ul.c-attributes-list.c-attributes-list--pros.c-attributes-list--circle.o-block-list.o-block-list--snug li.c-attributes-list__item',
+                    );
+                    const pros: string[] = Array.from(prosElements)
+                        .map((el) => el.textContent?.trim() || '')
+                        .filter((text) => text);
 
-            prosContainer.find('li.c-attributes-list__item').each((_idx, el) => {
-                pros.push($(el).text().trim());
-            });
+                    // Get cons
+                    const consElements = reviewElement.querySelectorAll(
+                        'ul.c-attributes-list.c-attributes-list--cons.c-attributes-list--circle.o-block-list.o-block-list--snug li.c-attributes-list__item',
+                    );
+                    const cons: string[] = Array.from(consElements)
+                        .map((el) => el.textContent?.trim() || '')
+                        .filter((text) => text);
 
-            const cons: string[] = [];
+                    // Get shop reply
+                    const shopReply =
+                        reviewElement.querySelector('.c-post-response > p')?.textContent?.trim() || undefined;
 
-            const consContainer = reviewElement.find(
-                'ul.c-attributes-list.c-attributes-list--cons.c-attributes-list--circle.o-block-list.o-block-list--snug',
-            );
-
-            consContainer.find('li.c-attributes-list__item').each((_idx, el) => {
-                cons.push($(el).text().trim());
-            });
-
-            const shopReply = reviewElement.find('.c-post-response > p').text().trim();
-
-            const pageReview: Review = {
-                shopName,
-                author,
-                reviewAt,
-                recommendation,
-                rating,
-                pros,
-                cons,
-                summary,
-                shopReply,
-            };
-
-            pageReviews.push(pageReview);
-        });
+                    return {
+                        shopName: currentShopName,
+                        author,
+                        reviewAt,
+                        recommendation,
+                        rating,
+                        pros: pros.length > 0 ? pros : undefined,
+                        cons: cons.length > 0 ? cons : undefined,
+                        summary,
+                        shopReply,
+                    };
+                });
+            },
+            shopName,
+        );
 
         const reviewsNeeded = maxShopReviews - (state.scrapedReviewsPerShop[shopName] || 0);
         pageReviews = pageReviews.slice(0, reviewsNeeded);
@@ -107,7 +129,7 @@ const crawler = new CheerioCrawler({
             // update state must be before pushData to prevent race condition
             state.scrapedReviewsPerShop[shopName] = (state.scrapedReviewsPerShop[shopName] || 0) + pageReviews.length;
 
-            await Dataset.pushData(pageReviews);
+            await Actor.pushData(pageReviews);
 
             log.info(
                 `Successfully saved ${state.scrapedReviewsPerShop[shopName]}/${maxShopReviews} reviews from page ${request.url}`,
@@ -126,6 +148,8 @@ const crawler = new CheerioCrawler({
         }
     },
 });
+
+crawler.log.debug('Config', { shopUrls, proxy: { proxyGroups, proxyCountry }, concurrency: { maxConcurrency } });
 
 await crawler.run(shopUrls);
 

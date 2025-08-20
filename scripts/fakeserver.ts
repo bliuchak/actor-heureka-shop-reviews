@@ -49,6 +49,10 @@ app.get(/^\/([^/]+)\/.*$/, (req, res) => {
     return res.sendFile(filePath);
 });
 
+app.get('/forbidden', (_, res) => {
+    res.status(403).send('Access to this resource is forbidden.');
+});
+
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
 });
